@@ -4,11 +4,9 @@ import axios from "axios";
 const Home = () => {
     const [data, setData] = useState(null);
     // useEffect(()=>{
-        // axios.get("/api/getData/" +  "wT3BGq7l9w8").then(function(data){
-        //     setData(data.data)
-        //     console.log(data.data)
-        //     setLoaded(true);
-        // })
+    //     axios.get("/api/generateTags/" +  "wT3BGq7l9w8").then(function(data){
+    //         console.log(data.data)
+    //     })
     // }, [])
 
     const search = () => {
@@ -23,7 +21,7 @@ const Home = () => {
             <button id="search" className="w-1/4 bg-blue-700 text-white font-bold text-2xl rounded-lg p-4" onClick={search}>Search!</button>
 
             <div className="data w-3/4 m-auto border-gray-200 border-2 rounded-md shadow-lg p-6 block font-medium text-xl my-6">
-                <img className="mb-6" src={data ? data.snippet.thumbnails.maxres.url : ""} width="1280" height="720"/>
+                <img className="mb-6" src={data ? data.snippet.thumbnails.maxres.url : "https://placehold.co/1280x720"} width="1280" height="720"/>
                 <p className="mb-2 title"><strong>Title: </strong>{data ? data.snippet.title : ""}</p>
                 <p className="mb-2 description"><strong>Description: </strong>{data ? data.snippet.description : ""}</p>
                 <p className="mb-2 channelTitle"><strong>Channel Title: </strong>{data ? data.snippet.channelTitle : ""}</p>
