@@ -19,14 +19,16 @@ module.exports = {
       });
   },
   generateTags: async function (req, res) {
+    let returnData = [];
     console.log('working')
     const spawn = require("child_process").spawn;
-    const pythonProcess = spawn("python", ["py_scripts.py", req.params["id"]])
+    const pythonProcess = spawn("python", ["py_scripts.py", "generate_tags", req.params["id"], API_KEY])
     console.log("connecting to python...")
     pythonProcess.stdout.on('data', (data) => {
         console.log(data.toString());
         res.json(JSON.parse(data.toString()))
     });
+    
   },
 };
 
