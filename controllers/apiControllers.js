@@ -7,6 +7,8 @@ const {PythonShell} = require("python-shell")
 const dotenv = require("dotenv")
 dotenv.config();
 const API_KEY = process.env.API_KEY;
+const bodyParser = require('body-parser')
+
 module.exports = {
   getData: function (req, res) {
     // console.log(req.params["id"])
@@ -28,7 +30,19 @@ module.exports = {
         console.log(data.toString());
         res.json(JSON.parse(data.toString()))
     });
-    
+  },
+  generateTitlesDefault: async function (req, res) {
+    const {youtubeAPIKey, openAIKey, video_id} = req.body;
+
+    let returnData = [];
+    console.log('working')
+    const spawn = require("child_process").spawn;
+    const pythonProcess = spawn("python", ["py_scripts.py", "default_generate_titles", req.params["id"], youtubeAPIKey, openAIKey, video_id])
+    console.log("connecting to python...")
+    pythonProcess.stdout.on('data', (data) => {
+        console.log(data.toString());
+        res.json(JSON.parse(data.toString()))
+    });
   },
 };
 

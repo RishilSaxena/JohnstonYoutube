@@ -1,4 +1,3 @@
-
 import sys
 import nltk
 import re
@@ -13,13 +12,15 @@ nltk.download('punkt')
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
 from nltk.corpus import stopwords
-
-
+import openai
+import requests
+import re
+import pprint
+import pandas as pd
+from cryptography.fernet import Fernet
+from flask import Flask, jsonify
 from bs4 import BeautifulSoup as bs
 import requests
-
-
-
 
 def getYoutubeTags(url):
     request = requests.get(url)
@@ -47,8 +48,6 @@ def scrape(query):
         for tag in tags:
             tagArray.append(tag.lower())
 
-
-
     # print(tagArray);
     tag_count = {}
     for element in tagArray:
@@ -61,12 +60,7 @@ def scrape(query):
     tag_dict = dict(tag_count)
     return tag_count
 
-  
-
-
 def remove_stopwords(sentences):
-    
-    
     stop_words = set(stopwords.words('english'))
     filtered_sentences = []
 
@@ -76,6 +70,7 @@ def remove_stopwords(sentences):
         filtered_sentence = ' '.join(filtered_words)
         filtered_sentences.append(filtered_sentence)
     return filtered_sentences
+
 def remove_punctuation(sentences):
     punctuation = string.punctuation
     filtered_sentences = []
@@ -87,7 +82,6 @@ def remove_punctuation(sentences):
     return filtered_sentences
 
 def generate_tags():
-
     transcript = YouTubeTranscriptApi.get_transcript(sys.argv[2])
     formatter = TextFormatter();
     text = formatter.format_transcript(transcript)
@@ -132,17 +126,51 @@ def generate_tags():
     result += ("]")
     print(result)
 
+def default_gen_titles():
+    youtube_key = input('Enter your YouTube Data API v3 key: ')
+    openai_key = input('Enter your OpenAI API key: ')
+    video_id = input('Enter the id of your video: ')
 
+    base_url = "https://www.googleapis.com/youtube/v3/videos"
+    params = {
+        "part": "snippet",
+        "id": video_id,
+        "key": youtube_key
+    }
+
+    try:
+        response = requests.get(base_url, params=params)
+
+        if response.status_code == 200:
+            data = response.json()
+            video = data["items"][0]
+            description = video["snippet"]["description"]
+            print("Video Description: ", description)
+        else:
+            print("Request failed with status code:", response.status_code)
+    except requests.exceptions.RequestException as e:
+        print("An error occurred:", e)
+    
+    if (description):
+        openai.api_key = openai_key
+
+        response = openai.Completion.create(
+          engine="davinci",
+          prompt=f"Generate three titles based on the description: \"{description}\". \n1.",
+          max_tokens=60,
+          n=3,
+          stop="\n",
+          temperature=0.4
+        )
+
+        if response:
+            for i, title in enumerate(response.choices):
+                print(f"Title {i + 1}: {title['text'].strip()}")
 
 if(sys.argv[1] == "generate_tags"):
     generate_tags()
-
-
+elif sys.argv[1] == "default_generate_titles":
+    default_gen_titles()
 
 # print("connected to python")
 sys.stdout.flush()
-
-
-
-
-
