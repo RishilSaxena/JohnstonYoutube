@@ -158,8 +158,8 @@ def default_gen_titles():
     print(response.choices[0]['message']['content'])
 
 def generate_title_transcript():
-    video_id = input('Input your video ID')
-    openai_key = input('Input your OpenAI API key')
+    video_id = sys.argv[2]
+    openai_key = sys.argv[3]
 
     transcript = YouTubeTranscriptApi.get_transcript(video_id)
     full_transcript = ""
@@ -177,7 +177,8 @@ def generate_title_transcript():
     print(response.choices[0]['message']['content'])
 
 def gen_titles_queries():
-    queries = [query1, query2, query3]
+    key = sys.argv[2]
+    queries = [sys.arg[4], sys.arg[5], sys.arg[6]]
     titles = []
 
     for query in queries:
@@ -204,7 +205,7 @@ def gen_titles_queries():
 
     input_text = "\n".join(titles)
 
-    openai.api_key = api_key
+    openai.api_key = sys.argv[3]
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": f"Use these YouTube titles as inspiration to create a new one that would suit these queries: {', '.join(queries)}:\n{input_text}"}],
@@ -213,7 +214,7 @@ def gen_titles_queries():
 
     print(response["choices"][0]["message"]["content"])
 
-def gen_titles_numbers():
+def gen_titles_numbers(): #FIX THIS ONE
     base_url = "https://www.googleapis.com/youtube/v3/videos"
     params = {
         "part": "snippet",
