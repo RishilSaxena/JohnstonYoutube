@@ -5,7 +5,7 @@ const axios = require("axios");
 // const { join } = require("path");
 const dotenv = require("dotenv")
 dotenv.config();
-const API_KEY = process.env.API_KEY;
+const API_KEY = 'AIzaSyA_9KaxGk4G_chiiaiMV80JfMXTB7pRfW8';
 const bodyParser = require('body-parser')
 
 module.exports = {
@@ -20,10 +20,23 @@ module.exports = {
       });
   },
   generateTags: async function (req, res) {
+    console.log(req.params);
     let returnData = [];
     console.log('working')
     const spawn = require("child_process").spawn;
     const pythonProcess = spawn("python", ["py_scripts.py", "generate_tags", req.params["id"], API_KEY])
+    console.log("connecting to python...")
+    pythonProcess.stdout.on('data', (data) => {
+        console.log(data.toString());
+        res.json(JSON.parse(data.toString()))
+    });
+  },
+  defaultGenerateTitles: async function (req, res) {
+    console.log(req.params);
+    let returnData = [];
+    console.log('working')
+    const spawn = require("child_process").spawn;
+    const pythonProcess = spawn("python", ["py_scripts.py", "generate_tags", req.params["id"], req.params['youtubeKey'], req.params['openAIKey']])
     console.log("connecting to python...")
     pythonProcess.stdout.on('data', (data) => {
         console.log(data.toString());

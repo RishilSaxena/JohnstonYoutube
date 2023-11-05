@@ -126,9 +126,9 @@ def generate_tags():
 
 # Generate Titles
 def default_gen_titles():
+    video_id = sys.argv[2]
     youtube_key = sys.argv[3]
     openai_key = sys.argv[4]
-    video_id = sys.argv[5]
 
     base_url = "https://www.googleapis.com/youtube/v3/videos"
     params = {
