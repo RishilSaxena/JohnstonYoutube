@@ -3,7 +3,6 @@ const axios = require("axios");
 // const { readFile } = require("fs/promises");
 // const { appendFile } = require("fs/promises");
 // const { join } = require("path");
-const {PythonShell} = require("python-shell")
 const dotenv = require("dotenv")
 dotenv.config();
 const API_KEY = process.env.API_KEY;
@@ -31,23 +30,7 @@ module.exports = {
         res.json(JSON.parse(data.toString()))
     });
   },
-  generateTitlesDefault: async function (req, res) {
-    const {youtubeAPIKey, openAIKey, video_id} = req.body;
-
-    let returnData = [];
-    console.log('working')
-    const spawn = require("child_process").spawn;
-    const pythonProcess = spawn("python", ["py_scripts.py", "default_generate_titles", req.params["id"], youtubeAPIKey, openAIKey, video_id])
-    console.log("connecting to python...")
-    pythonProcess.stdout.on('data', (data) => {
-        console.log(data.toString());
-        res.json(JSON.parse(data.toString()))
-    });
-  },
 };
-
-
-
 
 // await appendFile("./args.json", JSON.stringify(req.params["id"]), {
 //     encoding: "utf-8",

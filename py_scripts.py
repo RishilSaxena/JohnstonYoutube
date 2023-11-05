@@ -12,15 +12,13 @@ nltk.download('punkt')
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
 from nltk.corpus import stopwords
+import re
+from flask import Flask, jsonify
+from bs4 import BeautifulSoup as bs
 import openai
 import requests
 import re
 import pprint
-import pandas as pd
-from cryptography.fernet import Fernet
-from flask import Flask, jsonify
-from bs4 import BeautifulSoup as bs
-import requests
 
 def getYoutubeTags(url):
     request = requests.get(url)
@@ -126,10 +124,11 @@ def generate_tags():
     result += ("]")
     print(result)
 
+# Generate Titles
 def default_gen_titles():
-    youtube_key = input('Enter your YouTube Data API v3 key: ')
-    openai_key = input('Enter your OpenAI API key: ')
-    video_id = input('Enter the id of your video: ')
+    youtube_key = sys.argv[3]
+    openai_key = sys.argv[4]
+    video_id = sys.argv[5]
 
     base_url = "https://www.googleapis.com/youtube/v3/videos"
     params = {
@@ -137,40 +136,120 @@ def default_gen_titles():
         "id": video_id,
         "key": youtube_key
     }
-
     try:
         response = requests.get(base_url, params=params)
-
         if response.status_code == 200:
             data = response.json()
             video = data["items"][0]
             description = video["snippet"]["description"]
-            print("Video Description: ", description)
         else:
             print("Request failed with status code:", response.status_code)
     except requests.exceptions.RequestException as e:
         print("An error occurred:", e)
-    
+
     if (description):
-        openai.api_key = openai_key
+      openai.api_key = openai_key
+      response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": f"Use this video description to create three short titles for this YouTube video: {description}"}],
+        max_tokens=60
+      )
 
-        response = openai.Completion.create(
-          engine="davinci",
-          prompt=f"Generate three titles based on the description: \"{description}\". \n1.",
-          max_tokens=60,
-          n=3,
-          stop="\n",
-          temperature=0.4
-        )
+    print(response.choices[0]['message']['content'])
 
-        if response:
-            for i, title in enumerate(response.choices):
-                print(f"Title {i + 1}: {title['text'].strip()}")
+def generate_title_transcript():
+    video_id = input('Input your video ID')
+    openai_key = input('Input your OpenAI API key')
 
-if(sys.argv[1] == "generate_tags"):
-    generate_tags()
-elif sys.argv[1] == "default_generate_titles":
-    default_gen_titles()
+    transcript = YouTubeTranscriptApi.get_transcript(video_id)
+    full_transcript = ""
+    
+    for segment in transcript:
+        full_transcript += segment['text'] + " "
+    
+    openai.api_key = openai_key
+    response = openai.ChatCompletion.create(
+      model="gpt-3.5-turbo",
+      messages=[{"role": "user", "content": f"Generate three titles based on the transcript of this YouTube video: \"{full_transcript}\""}],
+      max_tokens=60
+    )
+    
+    print(response.choices[0]['message']['content'])
+
+def gen_titles_queries():
+    queries = [query1, query2, query3]
+    titles = []
+
+    for query in queries:
+      api_url_query = f'https://www.googleapis.com/youtube/v3/search?key={key}&q={query}&type=video&order=viewCount&maxResults=20'
+
+      try:
+          r = requests.get(api_url_query)
+          r.raise_for_status()
+          data = r.json()
+
+          ids = [item['id']['videoId'] if 'videoId' in item['id'] else item['id'] for item in data.get("items", [])]
+      except requests.exceptions.RequestException as e:
+          print(f"An error occurred: {e}")
+
+      for id in ids:
+          api_url_video = f"https://www.googleapis.com/youtube/v3/videos?id={id}&key={key}&part=snippet"
+          response = requests.get(api_url_video)
+
+          if response.status_code == 200:
+            video_data = response.json()
+            titles.append(video_data['items'][0]['snippet']['title'])
+          else:
+            print("Error:", response.status_code)
+
+    input_text = "\n".join(titles)
+
+    openai.api_key = api_key
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": f"Use these YouTube titles as inspiration to create a new one that would suit these queries: {', '.join(queries)}:\n{input_text}"}],
+        max_tokens=20
+    )
+
+    print(response["choices"][0]["message"]["content"])
+
+def gen_titles_numbers():
+    base_url = "https://www.googleapis.com/youtube/v3/videos"
+    params = {
+        "part": "snippet",
+        "id": video_id,
+        "key": youtube_key
+    }
+    try:
+        response = requests.get(base_url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            video = data["items"][0]
+            description = video["snippet"]["description"]
+        else:
+            print("Request failed with status code:", response.status_code)
+    except requests.exceptions.RequestException as e:
+        print("An error occurred:", e)
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": f"Using the provided description, generate two SHORT YouTube titles with relevant numbers in them: {description}"}],
+        max_tokens=20
+    )
+
+    print(response.choices[0]['message']['content'])
+
+match sys.argv[1]:
+    case "generate_tags":
+        generate_tags()
+    case "default_generate_titles":
+        default_gen_titles()
+    case "generate_title_transcript":
+        generate_title_transcript()
+    case "gen_titles_queries":
+        gen_titles_queries()
+    case "gen_titles_numbers":
+        gen_titles_numbers()
 
 # print("connected to python")
 sys.stdout.flush()
