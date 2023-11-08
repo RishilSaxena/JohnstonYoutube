@@ -64,6 +64,17 @@ module.exports = {
         res.json(JSON.parse(data.toString()))
     });
   },
+  generateTitlesNumbers: async function (req, res) {
+    let returnData = [];
+    console.log('working')
+    const spawn = require("child_process").spawn;
+    const pythonProcess = spawn("python", ["py_scripts.py", "gen_titles_numbers", req.params["id"], API_KEY, GPT_KEY,])
+    console.log("connecting to python...")
+    pythonProcess.stdout.on('data', (data) => {
+        console.log(data.toString());
+        res.json(JSON.parse(data.toString()))
+    });
+  },
 };
 
 // await appendFile("./args.json", JSON.stringify(req.params["id"]), {

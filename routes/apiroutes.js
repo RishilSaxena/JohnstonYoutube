@@ -16,4 +16,7 @@ module.exports = function(app){
     app.get("/api/genTitlesQueries/:query1/:query2/:query3", async function(req, res){
         apiControllers.generateTitlesQueries(req, res);
     })
+    app.get("/api/genTitlesNumbers/:id", async function(req, res){
+        apiControllers.generateTitlesNumbers(req, res);
+    })
 }
