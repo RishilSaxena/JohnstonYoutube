@@ -110,15 +110,8 @@ def generate_tags():
     most_common_words = [ele for ele in most_common_words if len(ele) >= 3]
     search_terms = ["mini itx build",
                         "fractal terra",
-                        "itx build",
-                        "fractal terra build",
-                        "micro atx build",
                         "fractal ridge",
-                        "mini itx",
-                        "matx case",
                         "nzxt h1 v2 build",
-                        "mini itx build 2023",
-                        "best itx case",
                         ]
     for term in search_terms:
         other_tags = scrape(term)[:5]

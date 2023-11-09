@@ -3,8 +3,8 @@ const axios = require("axios");
 // const { readFile } = require("fs/promises");
 // const { appendFile } = require("fs/promises");
 // const { join } = require("path");
-const {PythonShell} = require("python-shell")
-const dotenv = require("dotenv")
+const { PythonShell } = require("python-shell");
+const dotenv = require("dotenv");
 dotenv.config();
 const API_KEY = process.env.API_KEY;
 module.exports = {
@@ -20,20 +20,37 @@ module.exports = {
   },
   generateTags: async function (req, res) {
     let returnData = [];
-    console.log('working')
+    console.log("working");
     const spawn = require("child_process").spawn;
-    const pythonProcess = spawn("python", ["py_scripts.py", "generate_tags", req.params["id"], API_KEY])
-    console.log("connecting to python...")
-    pythonProcess.stdout.on('data', (data) => {
-        console.log(data.toString());
-        res.json(JSON.parse(data.toString()))
+    const pythonProcess = spawn("python", [
+      "py_scripts.py",
+      "generate_tags",
+      req.params["id"],
+      API_KEY,
+    ]);
+    console.log("connecting to python...");
+    pythonProcess.stdout.on("data", (data) => {
+      returnData = JSON.parse(data.toString())
+      axios
+        .get(
+          `https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=${req.params["id"]}&key=${API_KEY}`
+        )
+        .then(function (youtubedata) {
+          let description = youtubedata.data.items[0].snippet.description
+          description = description.split("\n")
+          description = description.filter((str) => str != "" && str.includes("//"))
+          description = description.slice(0, description.length-2)
+          description.forEach(part => {
+              returnData.push(part.split(":")[0])
+          });
+          console.log("done");
+          console.log(returnData)
+          res.json(returnData);
+        });
+      
     });
-    
   },
 };
-
-
-
 
 // await appendFile("./args.json", JSON.stringify(req.params["id"]), {
 //     encoding: "utf-8",
