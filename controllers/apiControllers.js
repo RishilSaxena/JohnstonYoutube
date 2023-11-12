@@ -3,10 +3,15 @@ const axios = require("axios");
 // const { readFile } = require("fs/promises");
 // const { appendFile } = require("fs/promises");
 // const { join } = require("path");
-const { PythonShell } = require("python-shell");
+
+
 const dotenv = require("dotenv");
+
 dotenv.config();
 const API_KEY = process.env.API_KEY;
+const GPT_KEY = process.env.GPT_KEY;
+const bodyParser = require('body-parser')
+
 module.exports = {
   getData: function (req, res) {
     // console.log(req.params["id"])
@@ -49,6 +54,18 @@ module.exports = {
         });
       
     });
+  },
+  generateTitles: async function (req, res) {
+    let returnData = [];
+    console.log('working (generate_titles)')
+    const spawn = require("child_process").spawn;
+    const pythonProcess = spawn("python", ["py_scripts.py", "generate_titles", req.params["id"], API_KEY, GPT_KEY])
+    console.log("connecting to python...")
+    pythonProcess.stdout.on('data', (data) => {
+        console.log(data.toString());
+        res.json(JSON.parse(data.toString()))
+    });
+
   },
 };
 

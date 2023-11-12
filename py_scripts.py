@@ -1,9 +1,6 @@
-
 import sys
 import nltk
-import re
 import string;
-from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import TextFormatter
 from gensim.models import Word2Vec
 from gensim.models import Phrases
@@ -13,13 +10,11 @@ nltk.download('punkt')
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
 from nltk.corpus import stopwords
-
-
 from bs4 import BeautifulSoup as bs
+from openai import OpenAI
 import requests
-
-
-
+import re
+from youtube_transcript_api import YouTubeTranscriptApi
 
 def getYoutubeTags(url):
     request = requests.get(url)
@@ -47,8 +42,6 @@ def scrape(query):
         for tag in tags:
             tagArray.append(tag.lower())
 
-
-
     # print(tagArray);
     tag_count = {}
     for element in tagArray:
@@ -61,12 +54,7 @@ def scrape(query):
     tag_dict = dict(tag_count)
     return tag_count
 
-  
-
-
 def remove_stopwords(sentences):
-    
-    
     stop_words = set(stopwords.words('english'))
     filtered_sentences = []
 
@@ -76,6 +64,7 @@ def remove_stopwords(sentences):
         filtered_sentence = ' '.join(filtered_words)
         filtered_sentences.append(filtered_sentence)
     return filtered_sentences
+
 def remove_punctuation(sentences):
     punctuation = string.punctuation
     filtered_sentences = []
@@ -87,7 +76,6 @@ def remove_punctuation(sentences):
     return filtered_sentences
 
 def generate_tags():
-
     transcript = YouTubeTranscriptApi.get_transcript(sys.argv[2])
     formatter = TextFormatter();
     text = formatter.format_transcript(transcript)
@@ -125,17 +113,124 @@ def generate_tags():
     result += ("]")
     print(result)
 
+# Generate Titles
+def generate_titles_description(youtube_key, openai_key, video_id):
+  client = OpenAI(api_key=openai_key)
+  base_url = "https://www.googleapis.com/youtube/v3/videos"
+  params = {
+      "part": "snippet",
+      "id": video_id,
+      "key": youtube_key
+  }
+  try:
+      response = requests.get(base_url, params=params)
+      if response.status_code == 200:
+          data = response.json()
+          video = data["items"][0]
+          description = video["snippet"]["description"]
+      else:
+          print("Request failed with status code:", response.status_code)
+  except requests.exceptions.RequestException as e:
+      print("An error occurred:", e)
+      return e
 
+  if (description):
+    response = client.chat.completions.create(
+      model="gpt-3.5-turbo",
+      messages=[{"role": "user", "content": f"Use this video description to create three short titles for this YouTube video: {description}"}],
+      max_tokens=60
+    )
 
-if(sys.argv[1] == "generate_tags"):
-    generate_tags()
+  return response.choices[0].message.content
 
+def generate_titles_transcript(video_id, openai_key):
+  client = OpenAI(api_key=openai_key)
 
+  transcript = YouTubeTranscriptApi.get_transcript(video_id)
+  full_transcript = ""
 
-# print("connected to python")
-sys.stdout.flush()
+  for segment in transcript:
+      full_transcript += segment['text'] + " "
 
+  response = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": f"Generate three titles based on the transcript of this YouTube video: \"{full_transcript}\""}],
+    max_tokens=60
+  )
 
+  return response.choices[0].message.content
 
+def generate_titles_queries(key, api_key, queries):
+  client = OpenAI(api_key=api_key)
+  titles = []
 
+  for query in queries:
+    api_url_query = f'https://www.googleapis.com/youtube/v3/search?key={key}&q={query}&type=video&order=viewCount&maxResults=20'
 
+    try:
+        r = requests.get(api_url_query)
+        r.raise_for_status()
+        data = r.json()
+
+        ids = [item['id']['videoId'] if 'videoId' in item['id'] else item['id'] for item in data.get("items", [])]
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+
+    for id in ids:
+        api_url_video = f"https://www.googleapis.com/youtube/v3/videos?id={id}&key={key}&part=snippet"
+        response = requests.get(api_url_video)
+
+        if response.status_code == 200:
+          video_data = response.json()
+          titles.append(video_data['items'][0]['snippet']['title'])
+        else:
+          print("Error:", response.status_code)
+          return response.status_code
+
+  input_text = "\n".join(titles)
+
+  response = client.chat.completions.create(
+      model="gpt-3.5-turbo",
+      messages=[{"role": "user", "content": f"Use these YouTube titles as inspiration to create a new one that would suit these queries: {', '.join(queries)}:\n{input_text}"}],
+      max_tokens=20
+  )
+
+  return response.choices[0].message.content
+
+def generate_with_numbers(youtube_key, openai_key, video_id):
+  client = OpenAI(api_key=openai_key)
+  base_url = "https://www.googleapis.com/youtube/v3/videos"
+  params = {
+      "part": "snippet",
+      "id": video_id,
+      "key": youtube_key
+  }
+
+  transcript = YouTubeTranscriptApi.get_transcript(video_id)
+  full_transcript = ""
+
+  for segment in transcript:
+      full_transcript += segment['text'] + " "
+
+  response = client.chat.completions.create(
+      model="gpt-3.5-turbo",
+      messages=[{"role": "user", "content": f"Using the provided transcript, generate two SHORT YouTube titles with relevant numbers in them: {full_transcript}"}], # Context...
+      max_tokens=20
+  )
+
+  return response.choices[0].message.content
+
+def gen_titles_all(video_id, openai_key, youtube_key):
+  first = generate_titles_description(youtube_key, openai_key, video_id)
+  second = generate_titles_transcript(video_id, openai_key)
+  third = generate_titles_queries(youtube_key, openai_key, re.findall(r'\d+\.\s*\'(.*?)\'', first))
+  fourth = generate_with_numbers(youtube_key, openai_key, video_id)
+
+  res = first + '\n' + second + '\n' + third + '\n' + fourth
+  print(res)
+
+match (sys.argv[1]):
+    case 'generate_tags':
+      generate_tags()
+    case 'generate_titles':
+      gen_titles_all(sys.argv[2], sys.argv[4], sys.argv[3])
