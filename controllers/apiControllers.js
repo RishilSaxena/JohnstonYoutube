@@ -31,44 +31,11 @@ module.exports = {
         res.json(JSON.parse(data.toString()))
     });
   },
-  defaultGenerateTitles: async function (req, res) {
+  generateTitles: async function (req, res) {
     let returnData = [];
-    console.log('working')
+    console.log('working (generate_titles)')
     const spawn = require("child_process").spawn;
-    const pythonProcess = spawn("python", ["py_scripts.py", "default_generate_titles", req.params["id"], API_KEY, GPT_KEY])
-    console.log("connecting to python...")
-    pythonProcess.stdout.on('data', (data) => {
-        console.log(data.toString());
-        res.json(JSON.parse(data.toString()))
-    });
-  },
-  generateTitlesTranscript: async function (req, res) {
-    let returnData = [];
-    console.log('working')
-    const spawn = require("child_process").spawn;
-    const pythonProcess = spawn("python", ["py_scripts.py", "generate_title_transcript", req.params["id"], GPT_KEY])
-    console.log("connecting to python...")
-    pythonProcess.stdout.on('data', (data) => {
-        console.log(data.toString());
-        res.json(JSON.parse(data.toString()))
-    });
-  },
-  generateTitlesQueries: async function (req, res) {
-    let returnData = [];
-    console.log('working')
-    const spawn = require("child_process").spawn;
-    const pythonProcess = spawn("python", ["py_scripts.py", "gen_titles_queries", API_KEY, GPT_KEY, req.params["query1"], req.params["query2"], req.params["query3"]])
-    console.log("connecting to python...")
-    pythonProcess.stdout.on('data', (data) => {
-        console.log(data.toString());
-        res.json(JSON.parse(data.toString()))
-    });
-  },
-  generateTitlesNumbers: async function (req, res) {
-    let returnData = [];
-    console.log('working')
-    const spawn = require("child_process").spawn;
-    const pythonProcess = spawn("python", ["py_scripts.py", "gen_titles_numbers", req.params["id"], API_KEY, GPT_KEY,])
+    const pythonProcess = spawn("python", ["py_scripts.py", "generate_titles", req.params["id"], API_KEY, GPT_KEY])
     console.log("connecting to python...")
     pythonProcess.stdout.on('data', (data) => {
         console.log(data.toString());
