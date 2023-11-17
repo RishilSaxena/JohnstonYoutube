@@ -4,13 +4,14 @@ const axios = require("axios");
 // const { appendFile } = require("fs/promises");
 // const { join } = require("path");
 
-
+const fs = require('fs')
 const dotenv = require("dotenv");
 
 dotenv.config();
 const API_KEY = process.env.API_KEY;
 const GPT_KEY = process.env.GPT_KEY;
 const bodyParser = require('body-parser')
+
 
 module.exports = {
   getData: function (req, res) {
@@ -67,6 +68,54 @@ module.exports = {
     });
 
   },
+  shortenVideo: function(req, res){
+    console.log('shortening video')
+    const spawn = require("child_process").spawn;
+    const pythonProcess = spawn("python", ["py_scripts.py", "shorten_video", "https://www.youtube.com/watch?v=" + req.params["id"]])
+    console.log("connecting to python...")
+    pythonProcess.stdout.on('data', (data) => {
+      console.log("finished")
+      res.end();
+      
+    });
+  },
+  sendVideo: function(req, res){
+    console.log('sending video')
+
+    const filePath = "video.mp4"
+    if(!filePath){
+        return res.status(404).send('File not found')
+    }
+
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if(range){
+        const parts = range.replace(/bytes=/, '').split('-')
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+        const chunksize = end - start + 1;
+        const file = fs.createReadStream(filePath, {start, end});
+        const head = {
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunksize,
+            'Content-Type': 'video/mp4'
+        };
+        res.writeHead(206, head);
+        file.pipe(res);
+    }
+    else{
+        const head = {
+            'Content-Length': fileSize,
+            'Content-Type': 'video/mp4'
+        };
+        res.writeHead(200, head);
+        fs.createReadStream(filePath).pipe(res)
+    }
+  }
 };
 
 // await appendFile("./args.json", JSON.stringify(req.params["id"]), {

@@ -14,7 +14,14 @@ from bs4 import BeautifulSoup as bs
 from openai import OpenAI
 import requests
 import re
+import json
 from youtube_transcript_api import YouTubeTranscriptApi
+import os # To delete the temporary file
+import csv # To read analytics data
+import pandas as pd # To handle snippet selection
+from pytube import YouTube # To downlaod the video
+import moviepy.editor as mp # To crop videos
+
 
 def getYoutubeTags(url):
     request = requests.get(url)
@@ -136,29 +143,33 @@ def generate_titles_description(youtube_key, openai_key, video_id):
 
   if (description):
     response = client.chat.completions.create(
-      model="gpt-3.5-turbo",
-      messages=[{"role": "user", "content": f"Use this video description to create three short titles for this YouTube video: {description}"}],
-      max_tokens=60
+    model="gpt-3.5-turbo",
+    messages=[
+        {"role": "user", "content": f"Use this video description to create a short title for this YouTube video: {description}"}
+    ],
+    max_tokens=20,
+    n=3,
+    temperature=0.4
     )
 
-  return response.choices[0].message.content
+    titles_array = [choice.message.content.replace('"', '').replace("'", '') for choice in response.choices]
+    return titles_array
 
 def generate_titles_transcript(video_id, openai_key):
-  client = OpenAI(api_key=openai_key)
+    client = OpenAI(api_key=openai_key)
+    transcript = YouTubeTranscriptApi.get_transcript(video_id)
+    full_transcript = ""
+    for segment in transcript:
+        full_transcript += segment['text'] + " "
+    response = client.chat.completions.create(
+      model="gpt-3.5-turbo",
+      messages=[{"role": "user", "content": f"Generate a YouTube title based on the transcript of this YouTube video: \"{full_transcript}\""}],
+      max_tokens=60,
+      n=3
+    )
 
-  transcript = YouTubeTranscriptApi.get_transcript(video_id)
-  full_transcript = ""
-
-  for segment in transcript:
-      full_transcript += segment['text'] + " "
-
-  response = client.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[{"role": "user", "content": f"Generate three titles based on the transcript of this YouTube video: \"{full_transcript}\""}],
-    max_tokens=60
-  )
-
-  return response.choices[0].message.content
+    titles_array = [choice.message.content.replace('"', '').replace("'", '') for choice in response.choices]
+    return titles_array
 
 def generate_titles_queries(key, api_key, queries):
   client = OpenAI(api_key=api_key)
@@ -214,23 +225,97 @@ def generate_with_numbers(youtube_key, openai_key, video_id):
 
   response = client.chat.completions.create(
       model="gpt-3.5-turbo",
-      messages=[{"role": "user", "content": f"Using the provided transcript, generate two SHORT YouTube titles with relevant numbers in them: {full_transcript}"}], # Context...
-      max_tokens=20
+      messages=[{"role": "user", "content": f"Using the provided transcript, generate a SHORT YouTube title with relevant numbers in it: {full_transcript}"}], # Context...
+      max_tokens=20,
+      n=2
   )
 
-  return response.choices[0].message.content
+  titles_array = [choice.message.content.replace('"', '').replace("'", '') for choice in response.choices]
+  return titles_array
 
 def gen_titles_all(video_id, openai_key, youtube_key):
   first = generate_titles_description(youtube_key, openai_key, video_id)
   second = generate_titles_transcript(video_id, openai_key)
-  third = generate_titles_queries(youtube_key, openai_key, re.findall(r'\d+\.\s*\'(.*?)\'', first))
+  third = generate_titles_queries(youtube_key, openai_key, first)
   fourth = generate_with_numbers(youtube_key, openai_key, video_id)
 
-  res = first + '\n' + second + '\n' + third + '\n' + fourth
-  print(res)
+  res = [first, second, third, fourth]
+  
+  flattened_list = [item for sublist in res for item in (sublist if isinstance(sublist, list) else [sublist])]
+  print(json.dumps(flattened_list))
+
+def crop_with_retention(url: str, retention_path: str, output_path = "ConvertedShort", max_seconds=60, deadzones=None):    
+    # Gets important video metadata but does not download the mp4 file yet.
+    video: YouTube = YouTube(url)
+    seconds_per_percent = video.length/100
+
+    with open(retention_path, "r") as file:
+        csv_reader = csv.reader(file)
+        # Get each moment's retention as a percent of the YouTube average at that time, skipping the header line.
+        relative_retentions = [line[2] for line in csv_reader][1:]
+    relative_retentions = [float(retention) for retention in relative_retentions]
+
+    # The change in retention is more useful than the actual retention.
+    retention_changes = [0]
+    for i, retention in enumerate(relative_retentions[1:]):
+        retention_changes.append(retention - relative_retentions[i])
+    retention_changes = pd.Series(retention_changes)
+
+    # Cut out deadzones that shouldn't be included in the final cut, such as advertisement reads.
+    drops = []
+    for deadzone in deadzones:
+        lower_bound = int(deadzone[0] / seconds_per_percent)
+        upper_bound = int(deadzone[1] / seconds_per_percent) + 1
+        drops.extend(range(lower_bound, upper_bound+1))
+    retention_changes.drop(drops, inplace=True)
+    
+    # Find the portions of the video with the best retention, getting as many as will fit into 1:00.
+    max_snippets = int(max_seconds/seconds_per_percent)
+    snippets = []
+    num_snippets = 0
+    while num_snippets < max_snippets:
+        max = retention_changes.idxmax()
+        # Convert percentage to actual timestamps
+        snippets.append(max * seconds_per_percent)
+        retention_changes.drop(max, inplace=True)
+        num_snippets += 1
+    snippets.sort()
+
+    # Download the video. The file will be deleted after the function is done.
+
+    stream_tag = video.streams.filter(file_extension="mp4")[0].itag
+    stream = video.streams.get_by_itag(stream_tag)
+    stream.download(filename="video_tmp.mp4")
+
+
+    #buffer_neg = seconds_per_percent / 2
+    #buffer_pos = seconds_per_percent - buffer_neg
+
+    with mp.VideoFileClip("video_tmp.mp4") as to_clip:
+        # Get a couple seconds after each top timestamp and combine these clips into a video.
+        #clips = [to_clip.subclip(snippet-buffer_neg, snippet+buffer_pos) for snippet in snippets]
+        clips = [to_clip.subclip(snippet, snippet+seconds_per_percent) for snippet in snippets]
+        best_clips = mp.concatenate_videoclips(clips)
+
+        # Crop the video to 16:9 vertical format instead of horizontal
+        vid_width = best_clips.size[0]
+        vid_height = best_clips.size[1]
+        new_width = int(9/16 * vid_height)
+        x_center = int(vid_width / 2)
+        y_center = int(vid_height / 2)
+        cropped_video = best_clips.crop(x_center=x_center, y_center=y_center, width=new_width, height=vid_height)
+        cropped_video = cropped_video.without_audio()
+        cropped_video.write_videofile(f"{output_path}.mp4")
+
+    
+    os.remove("video_tmp.mp4")
+    print("complete")
+
 
 match (sys.argv[1]):
     case 'generate_tags':
       generate_tags()
     case 'generate_titles':
       gen_titles_all(sys.argv[2], sys.argv[4], sys.argv[3])
+    case 'shorten_video':
+      crop_with_retention(url=sys.argv[2], retention_path="retention.csv", output_path='video', deadzones=[])
