@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const Tags = () => {
+const Tags = ({toggleLoading}) => {
   const [tags, setTags] = useState(null);
   // useEffect(()=>{
   //     axios.get("/api/generateTags/" +  "wT3BGq7l9w8").then(function(data){
@@ -10,12 +10,15 @@ const Tags = () => {
   // }, [])
 
   const search = () => {
+    toggleLoading(true)
     axios
       .get("/api/generateTags/" + document.getElementById("videoId").value)
       .then(function (data) {
         console.log(data.data);
         setTags(data.data);
+        toggleLoading(false)
       });
+
   };
 
   return (

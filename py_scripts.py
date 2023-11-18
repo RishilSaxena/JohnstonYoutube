@@ -244,7 +244,8 @@ def gen_titles_all(video_id, openai_key, youtube_key):
   flattened_list = [item for sublist in res for item in (sublist if isinstance(sublist, list) else [sublist])]
   print(json.dumps(flattened_list))
 
-def crop_with_retention(url: str, retention_path: str, output_path = "ConvertedShort", max_seconds=60, deadzones=None):    
+def crop_with_retention(url: str, retention_path: str, output_path = "ConvertedShort", max_seconds=60, deadzones=None):   
+    # os.remove("video.mp4") 
     # Gets important video metadata but does not download the mp4 file yet.
     video: YouTube = YouTube(url)
     seconds_per_percent = video.length/100

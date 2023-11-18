@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useState} from "react";
 import {
   BrowserRouter as Router,
   Route,
@@ -9,9 +9,14 @@ import Home from "./pages/Home"
 import Tags from "./pages/Tags";
 import Title from "./pages/Title";
 import Video from "./pages/Video";
-import Watcher from "./pages/Watcher";
+import LoadingModal from "./LoadingModal";
+
 
 function App() {
+  const [loading, setLoading] = useState(false)
+  const toggleLoading = (bool) => {
+    setLoading(bool)
+  }
   return (
     <div className="App">
      
@@ -42,14 +47,19 @@ function App() {
         Video Shortener
       </Link>
       </nav>
+      <div className={loading ? "opacity-20" : ""}>
         <Switch>
-          <Route exact path="/" element={<Home/>}/>
-          <Route path="/tags" element={<Tags/>}/>
-          <Route path="/title" element={<Title/>}/>
-          <Route path="/shorten" element={<Video/>}/>
-          <Route path="/watcher" element={<Watcher/>}/>
+          <Route exact path="/" element={<Home toggleLoading={toggleLoading}/>}/>
+          <Route path="/tags" element={<Tags toggleLoading={toggleLoading}/>}/>
+          <Route path="/title" element={<Title toggleLoading={toggleLoading}/>}/>
+          <Route path="/title" element={<Title toggleLoading={toggleLoading}/>}/>
+          <Route path="/shorten" element={<Video toggleLoading={toggleLoading}/>}/>
+
         </Switch>
+        </div>
+        {loading ? <LoadingModal/> : ""}
       </Router>
+      
     </div>
   );
 }

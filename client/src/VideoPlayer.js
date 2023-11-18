@@ -11,7 +11,7 @@ const VideoPlayer = ({videoId}) => {
         }
     })
   return (
-    <video ref={videoRef} width='320' height='240' controls autoPlay>
+    <video className="m-auto" ref={videoRef} width='320' height='240' controls autoPlay>
         <source src={`http://localhost:3000/api/sendVideo`} type='video/mp4'></source>
         Your browser does not support the video tag.
     </video>

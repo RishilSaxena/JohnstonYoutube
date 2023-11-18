@@ -74,7 +74,7 @@ module.exports = {
     const pythonProcess = spawn("python", ["py_scripts.py", "shorten_video", "https://www.youtube.com/watch?v=" + req.params["id"]])
     console.log("connecting to python...")
     pythonProcess.stdout.on('data', (data) => {
-      console.log("finished")
+      console.log("finished shortening")
       res.end();
       
     });
